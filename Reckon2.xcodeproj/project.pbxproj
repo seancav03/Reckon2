@@ -7,20 +7,28 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		14021F592B1C4A8E00F8CEE9 /* RefractionUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14021F582B1C4A8E00F8CEE9 /* RefractionUtils.swift */; };
 		142C54152B06A54A005ED011 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142C54142B06A54A005ED011 /* AppDelegate.swift */; };
 		142C54172B06A54A005ED011 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142C54162B06A54A005ED011 /* ContentView.swift */; };
 		142C54192B06A54A005ED011 /* Experience.rcproject in Sources */ = {isa = PBXBuildFile; fileRef = 142C54182B06A54A005ED011 /* Experience.rcproject */; };
 		142C541B2B06A54B005ED011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 142C541A2B06A54B005ED011 /* Assets.xcassets */; };
 		142C541E2B06A54B005ED011 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 142C541D2B06A54B005ED011 /* Preview Assets.xcassets */; };
+		1499EEE42B0B0E2E00910CC0 /* ARView+CoachingOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1499EEE32B0B0E2E00910CC0 /* ARView+CoachingOverlay.swift */; };
+		1499EEE62B0B172E00910CC0 /* DataModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1499EEE52B0B172E00910CC0 /* DataModel.swift */; };
+		14E4A5EF2B140329007533FF /* ARSessDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14E4A5EE2B140329007533FF /* ARSessDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		14021F582B1C4A8E00F8CEE9 /* RefractionUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefractionUtils.swift; sourceTree = "<group>"; };
 		142C54112B06A54A005ED011 /* Reckon2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Reckon2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		142C54142B06A54A005ED011 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		142C54162B06A54A005ED011 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		142C54182B06A54A005ED011 /* Experience.rcproject */ = {isa = PBXFileReference; lastKnownFileType = file.rcproject; path = Experience.rcproject; sourceTree = "<group>"; };
 		142C541A2B06A54B005ED011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		142C541D2B06A54B005ED011 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		1499EEE32B0B0E2E00910CC0 /* ARView+CoachingOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ARView+CoachingOverlay.swift"; sourceTree = "<group>"; };
+		1499EEE52B0B172E00910CC0 /* DataModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataModel.swift; sourceTree = "<group>"; };
+		14E4A5EE2B140329007533FF /* ARSessDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARSessDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +63,10 @@
 			children = (
 				142C54142B06A54A005ED011 /* AppDelegate.swift */,
 				142C54162B06A54A005ED011 /* ContentView.swift */,
+				1499EEE52B0B172E00910CC0 /* DataModel.swift */,
+				14E4A5EE2B140329007533FF /* ARSessDelegate.swift */,
+				1499EEE32B0B0E2E00910CC0 /* ARView+CoachingOverlay.swift */,
+				14021F582B1C4A8E00F8CEE9 /* RefractionUtils.swift */,
 				142C54182B06A54A005ED011 /* Experience.rcproject */,
 				142C541A2B06A54B005ED011 /* Assets.xcassets */,
 				142C541C2B06A54B005ED011 /* Preview Content */,
@@ -140,9 +152,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1499EEE62B0B172E00910CC0 /* DataModel.swift in Sources */,
 				142C54172B06A54A005ED011 /* ContentView.swift in Sources */,
 				142C54152B06A54A005ED011 /* AppDelegate.swift in Sources */,
+				14021F592B1C4A8E00F8CEE9 /* RefractionUtils.swift in Sources */,
+				1499EEE42B0B0E2E00910CC0 /* ARView+CoachingOverlay.swift in Sources */,
 				142C54192B06A54A005ED011 /* Experience.rcproject in Sources */,
+				14E4A5EF2B140329007533FF /* ARSessDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
