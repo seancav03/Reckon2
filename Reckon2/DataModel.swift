@@ -177,7 +177,7 @@ class DataModel: ObservableObject {
     func showModel(idx: Int) {
         if idx < models.count && idx >= 0 {
             models[idx].isEnabled = true
-            models[idx].position = arView.scene.anchors[0].position
+            models[idx].position = planeAnchor.position
         }
     }
     
