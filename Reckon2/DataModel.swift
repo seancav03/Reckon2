@@ -90,19 +90,6 @@ class DataModel: ObservableObject {
     
     // TODO: Remove when possible
     func initializeModels() {
-        // Initialize the Models
-        let elemsAnchor = try! Experience.loadElements()
-        let modelNames = ["Cube", "Sphere", "Cone"]
-        
-        // Process scene
-        for model in modelNames {
-            guard let body = elemsAnchor.findEntity(named: model) as? Entity & HasCollision else {
-                print("No entity found with name: ", model)
-                continue
-            }
-            generateElement(modelName: model, body: body, url: URL(fileURLWithPath: ""))
-        }
-        
         // Read items from files
         do {
             let urls: [URL] = try fm.contentsOfDirectory(at: modelsPath, includingPropertiesForKeys: nil)
@@ -121,7 +108,7 @@ class DataModel: ObservableObject {
     }
     
     func generateElement(modelName: String, body: Entity, url: URL) {
-        body.name = "projection"
+        recurseNaming(name: "projection", entity: body)
         let material = UnlitMaterial(color: .clear)
         // let material = SimpleMaterial()   // To visualize backing entity
         let backing = ModelEntity(mesh: MeshResource.generateBox(size: 0.01), materials: [material])
@@ -155,13 +142,15 @@ class DataModel: ObservableObject {
         case .some(.began):
             // Touch satisfied `minimumPressDuration`
             guard var entity: Entity = self.arView.entity(at: touchInView) else { return }
-            if entity.name == "projection" {
-                guard let parent = entity.parent as? ModelEntity else { return }
+            while entity.name == "projection" {
+                guard let parent = entity.parent else { return }
                 entity = parent
             }
             selectedEntity = entity as? ModelEntity
-            pressYOrigin = touchInView.y
-            selectedEntityYOrigin = entity.position(relativeTo: entitiesAnchor).y
+            if selectedEntity != nil {
+                pressYOrigin = touchInView.y
+                selectedEntityYOrigin = entity.position(relativeTo: entitiesAnchor).y
+            }
         case .some(.changed):
             // Touch moved after began
             let sensitivity = -0.005
@@ -263,12 +252,19 @@ class DataModel: ObservableObject {
         do {
             print("Copying \(url) to \(modelsPath)")
             try fm.copyItem(at: url, to: newURL)
-            
             guard let body: Entity = try? Entity.load(contentsOf: newURL) else { return }
+            recurseNaming(name: "projection", entity: body)
             let modelName: String = newURL.deletingPathExtension().lastPathComponent
             generateElement(modelName: modelName, body: body, url: newURL)
         } catch {
             print("Failed to store new file: \(error)")
+        }
+    }
+    
+    func recurseNaming(name: String, entity: Entity) {
+        entity.name = name
+        for child in entity.children {
+            recurseNaming(name: name, entity: child)
         }
     }
     
