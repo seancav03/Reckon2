@@ -6,9 +6,12 @@
 //
 
 import Foundation
+import ARKit
+import RealityKit
 
 struct CompElement: Identifiable {
-    let id = UUID()
+    let id: UUID = UUID()
     let name: String
-    let filePath: String
+    let url: URL
+    let body: Entity
 }

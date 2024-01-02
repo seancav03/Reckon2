@@ -12,8 +12,10 @@ import RealityKit
 
 class DataModel: ObservableObject {
     @Published var arView: ARView
-    @Published var models: [Entity]
+    @Published var models: [CompElement]
     @Published var planeHeight: Float
+    @Published var selectionMenuOpen: Bool = false
+    @Published var isImporting: Bool = false
     let refractionUtils: RefractionUtils = RefractionUtils()
     let planeAnchor: AnchorEntity
     let entitiesAnchor: AnchorEntity
@@ -22,10 +24,32 @@ class DataModel: ObservableObject {
     var selectedEntity: ModelEntity? = nil
     var selectedEntityYOrigin: Float? = nil
     var pressYOrigin: CGFloat? = nil
+    // File Management
+    let fm = FileManager.default
+    var modelsPath: URL
+    var mapsPath: URL
     
 //    var sessDel: ARSessionDelegate = ARSessDelegate()
     
     init() {
+        // Set up file storage
+        let documentsURL: URL = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
+        modelsPath = documentsURL.appendingPathComponent("Models")
+        do {
+            print("Creating Models directory")
+            try fm.createDirectory(at: modelsPath, withIntermediateDirectories: true, attributes: nil)
+        } catch {
+            print("Did not create Models directory: \(error)")
+        }
+        mapsPath = documentsURL.appendingPathComponent("Maps")
+        do {
+            print("Creating Maps directory")
+            try fm.createDirectory(at: mapsPath, withIntermediateDirectories: true, attributes: nil)
+        } catch {
+            print("Did not create Maps directory: \(error)")
+        }
+        
+        // Set up AR
         models = []
         planeHeight = 0.0
         arView = ARView(frame: .zero)
@@ -54,14 +78,17 @@ class DataModel: ObservableObject {
         let meshPrimitive = MeshResource.generatePlane(width: 0.5, depth: 0.5)
         let modelEntity = ModelEntity(mesh: meshPrimitive, materials: [material])
         modelEntity.name = "Surface"
+        modelEntity.generateCollisionShapes(recursive: false)
         
         planeAnchor.addChild(modelEntity)
         modelEntity.setPosition([0, 0, 0], relativeTo: planeAnchor)
         planeAnchor.name = "Plane"
+        arView.installGestures([.translation], for: modelEntity)
         // Add the anchors to the scene
         arView.scene.anchors.append(planeAnchor)
     }
     
+    // TODO: Remove when possible
     func initializeModels() {
         // Initialize the Models
         let elemsAnchor = try! Experience.loadElements()
@@ -73,32 +100,50 @@ class DataModel: ObservableObject {
                 print("No entity found with name: ", model)
                 continue
             }
-            body.name = "projection"
-            // Hidden Backing
-            //            let material = UnlitMaterial(color: .clear)
-            let material = SimpleMaterial()
-            let backing = ModelEntity(mesh: MeshResource.generateBox(size: 0.01), materials: [material])
-            backing.name = model
-            
-            entitiesAnchor.addChild(backing)
-            backing.setPosition([0, 0, 0], relativeTo: entitiesAnchor)
-            backing.addChild(body)
-            body.setPosition([0, 0, 0], relativeTo: backing)
-            backing.generateCollisionShapes(recursive: false)
-            
-            // Install translation gesture for horizontal movement
-            arView.installGestures(.translation, for: backing)
-            
-            // Install long-press and pan gesture for vertical movement
-            let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
-            longPress.minimumPressDuration = 0.3
-            arView.addGestureRecognizer(longPress)
-            
-            backing.isEnabled = false
-            models.append(backing)
+            generateElement(modelName: model, body: body, url: URL(fileURLWithPath: ""))
+        }
+        
+        // Read items from files
+        do {
+            let urls: [URL] = try fm.contentsOfDirectory(at: modelsPath, includingPropertiesForKeys: nil)
+            print("URLS: \(urls), modelsPath: \(modelsPath)")
+
+            for url in urls {
+                guard let body: Entity = try? Entity.load(contentsOf: url) else { continue }
+                let modelName: String = url.deletingPathExtension().lastPathComponent
+                generateElement(modelName: modelName, body: body, url: url)
+            }
+        } catch {
+             print("Failed to read files")
         }
         
         arView.scene.anchors.append(entitiesAnchor)
+    }
+    
+    func generateElement(modelName: String, body: Entity, url: URL) {
+        body.name = "projection"
+        let material = UnlitMaterial(color: .clear)
+        // let material = SimpleMaterial()   // To visualize backing entity
+        let backing = ModelEntity(mesh: MeshResource.generateBox(size: 0.01), materials: [material])
+        backing.name = modelName
+        
+        entitiesAnchor.addChild(backing)
+        backing.setPosition([0, 0, 0], relativeTo: planeAnchor.findEntity(named: "Surface"))
+        backing.addChild(body)
+        body.setPosition([0, 0, 0], relativeTo: backing)
+        backing.generateCollisionShapes(recursive: true)
+        
+        // Install translation gesture for horizontal movement
+        arView.installGestures([.translation, .rotation], for: backing)
+        
+        // Install long-press and pan gesture for vertical movement
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        longPress.minimumPressDuration = 0.3
+        arView.addGestureRecognizer(longPress)
+        
+        backing.isEnabled = false
+        
+        models.append(CompElement(name: modelName, url: url, body: backing))
     }
     
     @objc func handleLongPress(_ recognizer: UITapGestureRecognizer? = nil) {
@@ -137,7 +182,8 @@ class DataModel: ObservableObject {
     
     func myPostProcessCallback(context: ARView.PostProcessContext) {
        // Handle postprocessing here (using positioning relative to planeAnchor)
-        for model in models {
+        for compElem in models {
+            let model = compElem.body
             if model.isEnabled {
                 let cameraPos = planeAnchor.convert(position: arView.cameraTransform.translation, from: nil)
                 let bodyPos = model.position(relativeTo: planeAnchor)
@@ -159,7 +205,9 @@ class DataModel: ObservableObject {
         planeUpdateCount += 1
         if let plane = planeAnchor.findEntity(named: "Surface") {
             planeHeight += delta
-            plane.setPosition([0, planeHeight, 0], relativeTo: planeAnchor)
+            var pos = plane.position(relativeTo: planeAnchor)
+            pos.y = planeHeight
+            plane.setPosition(pos, relativeTo: planeAnchor)
             
             // Show the plane for 5 seconds
             let closure = { [planeUpdateCount] in
@@ -168,24 +216,60 @@ class DataModel: ObservableObject {
                 }
             }
             plane.isEnabled = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                 closure()
             }
         }
     }
     
-    func showModel(idx: Int) {
-        if idx < models.count && idx >= 0 {
-            models[idx].isEnabled = true
-            models[idx].position = planeAnchor.position
+    func showModel(id: UUID) {
+        for compElem in models {
+            if compElem.id == id {
+                compElem.body.isEnabled = true
+//                compElem.body.position = planeAnchor.position
+                if let surface = planeAnchor.findEntity(named: "Surface") {
+                    compElem.body.setPosition([0,0,0], relativeTo: surface)
+                }
+                break
+            }
         }
     }
     
     func hideAll() {
         for m in models {
-            m.isEnabled = false
+            m.body.isEnabled = false
         }
                     
+    }
+    
+    func deleteElement(id: UUID) {
+        for (idx, model) in models.enumerated() {
+            if model.id == id {
+                do {
+                    try fm.removeItem(at: model.url)
+                    entitiesAnchor.removeChild(model.body)
+                    models.remove(at: idx)
+                } catch {
+                    print("Error: Unable to delete model file: \(error)")
+                }
+                return
+            }
+        }
+        print("Error: Did not find model with that id")
+    }
+    
+    func uploadModel(url: URL) {
+        let newURL = modelsPath.appendingPathComponent(url.lastPathComponent)
+        do {
+            print("Copying \(url) to \(modelsPath)")
+            try fm.copyItem(at: url, to: newURL)
+            
+            guard let body: Entity = try? Entity.load(contentsOf: newURL) else { return }
+            let modelName: String = newURL.deletingPathExtension().lastPathComponent
+            generateElement(modelName: modelName, body: body, url: newURL)
+        } catch {
+            print("Failed to store new file: \(error)")
+        }
     }
     
 }

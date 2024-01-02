@@ -18,19 +18,41 @@ struct ContentView : View {
             HStack {
                 VStack {
                     Spacer()
-                    Menu {
-                        Button("Cube") {
-                            dataModel.showModel(idx: 0)
-                        }
-                        Button("Sphere") {
-                            dataModel.showModel(idx: 1)
-                        }
-                        Button("Cone") {
-                            dataModel.showModel(idx: 2)
-                        }
-                    } label: {
-                        Image(systemName: "plus.app").font(.system(size: 40))
-                    }.padding(20)
+                    Image(systemName: "plus.app").onTapGesture {
+                        dataModel.selectionMenuOpen.toggle()
+                    }.font(.system(size: 40)).padding(20)
+                        .sheet(isPresented: $dataModel.selectionMenuOpen, content: {
+                            VStack {
+                                ForEach(dataModel.models) { compElem in
+                                    VStack {
+                                        HStack {
+                                            Button(compElem.name) {
+                                                dataModel.showModel(id: compElem.id)
+                                            }
+                                            Spacer()
+                                            Image(systemName: "trash.fill")
+                                                .onTapGesture {
+                                                    dataModel.deleteElement(id: compElem.id)
+                                                }
+                                                .font(.system(size: 20))
+                                        }
+                                        Divider()
+                                    }
+                                }
+                                Spacer()
+                                Image(systemName: "square.and.arrow.up")
+                                    .onTapGesture {
+                                        dataModel.selectionMenuOpen = false
+                                        dataModel.isImporting.toggle()
+                                    }
+                                    .font(.system(size: 20))
+                                    .padding(.top, 20)
+                            }
+                            .padding(20)
+                            .cornerRadius(20)
+                            .shadow(radius: 5)
+                            .padding(40)
+                        })
                 }
                 Spacer()
                 VStack {
@@ -60,6 +82,25 @@ struct ContentView : View {
                 }
             }
             .foregroundColor(Color(red: 207/255, green: 54/255, blue: 49/255))
+        }
+        .fileImporter(isPresented: $dataModel.isImporting,
+                        allowedContentTypes: [.usdz],
+                      allowsMultipleSelection: true) { result in
+            switch result {
+            case .success(let files):
+                files.forEach { file in
+                    // gain access to the directory
+                    let gotAccess = file.startAccessingSecurityScopedResource()
+                    if !gotAccess { return }
+                    // access the directory URL
+                    dataModel.uploadModel(url: file)
+                    // release access
+                    file.stopAccessingSecurityScopedResource()
+                }
+            case .failure(let error):
+                // TODO: handle error
+                print(error)
+            }
         }
     }
 }
