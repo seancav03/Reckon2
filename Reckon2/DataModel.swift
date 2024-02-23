@@ -16,6 +16,8 @@ class DataModel: ObservableObject {
     @Published var planeHeight: Float
     @Published var selectionMenuOpen: Bool = false
     @Published var isImporting: Bool = false
+    @Published var referenceID: UUID? = nil
+    @Published var generatedMapURL: URL? = nil
     let refractionUtils: RefractionUtils = RefractionUtils()
     let planeAnchor: AnchorEntity
     let entitiesAnchor: AnchorEntity
@@ -88,7 +90,6 @@ class DataModel: ObservableObject {
         arView.scene.anchors.append(planeAnchor)
     }
     
-    // TODO: Remove when possible
     func initializeModels() {
         // Read items from files
         do {
@@ -99,6 +100,9 @@ class DataModel: ObservableObject {
                 guard let body: Entity = try? Entity.load(contentsOf: url) else { continue }
                 let modelName: String = url.deletingPathExtension().lastPathComponent
                 generateElement(modelName: modelName, body: body, url: url)
+                if referenceID == nil {
+                    referenceID = models[0].id
+                }
             }
         } catch {
              print("Failed to read files")
@@ -141,7 +145,10 @@ class DataModel: ObservableObject {
         switch recognizer?.state {
         case .some(.began):
             // Touch satisfied `minimumPressDuration`
-            guard var entity: Entity = self.arView.entity(at: touchInView) else { return }
+            guard var entity: Entity = self.arView.entity(at: touchInView) else {
+                // test code here
+                return
+            }
             while entity.name == "projection" {
                 guard let parent = entity.parent else { return }
                 entity = parent
@@ -238,6 +245,14 @@ class DataModel: ObservableObject {
                     try fm.removeItem(at: model.url)
                     entitiesAnchor.removeChild(model.body)
                     models.remove(at: idx)
+                    // Reset reference entity if removed
+                    if let ref = referenceID, ref == model.id {
+                        if models.count == 0 {
+                            referenceID = nil
+                        } else {
+                            referenceID = models[0].id
+                        }
+                    }
                 } catch {
                     print("Error: Unable to delete model file: \(error)")
                 }
@@ -256,6 +271,9 @@ class DataModel: ObservableObject {
             recurseNaming(name: "projection", entity: body)
             let modelName: String = newURL.deletingPathExtension().lastPathComponent
             generateElement(modelName: modelName, body: body, url: newURL)
+            if referenceID == nil {
+                referenceID = models[0].id
+            }
         } catch {
             print("Failed to store new file: \(error)")
         }
@@ -268,4 +286,86 @@ class DataModel: ObservableObject {
         }
     }
     
+    // MARK: POSITION EXPORT UTILS
+    func mapElementsJSONString(relativeTo entity: Entity) -> String? {
+        let dict = mapElements(relativeTo: entity)
+        let jsonData = try? JSONEncoder().encode(dict)
+        if jsonData != nil {
+            guard let jsonString = String(data: jsonData!, encoding: .utf8) else {
+                print("Failed to write JSON String")
+                return nil
+            }
+            return jsonString
+        } else {
+            print("Failed to parse JSON")
+            return nil
+        }
+    }
+    
+    // Gets dictionary of element positions relative to the given entity. RelativeTo Entity's orientation is considered
+    func mapElements(relativeTo entity: Entity) -> Dictionary<String, Dictionary<String, Float>> {
+        var data = Dictionary<String, Dictionary<String, Float>>()
+        for model in models {
+            if model.body.isEnabled {
+                let pos: SIMD3<Float> = model.body.position(relativeTo: entity)
+                let q: simd_quatf = model.body.orientation(relativeTo: entity)
+                let yaw: Float = quadToYaw(q: q)
+                data[model.name] = ["locX": pos.x, "locY": pos.y, "locZ": pos.z, "yaw": yaw]
+            }
+        }
+        return data
+    }
+    
+    func generateMap() {
+        if let ref = referenceID, let refEntity = models.first(where: { $0.id == ref }) {
+            guard let mapStr = mapElementsJSONString(relativeTo: refEntity.body) else {
+                print("Failed to generate map JSON")
+                return
+            }
+            // Export
+            let fileURL = mapsPath.appendingPathComponent(Date().timeIntervalSince1970.description + ".txt")
+            do {
+                try mapStr.write(to: fileURL, atomically: true, encoding: .utf8)
+                generatedMapURL = fileURL
+            } catch {
+                print("Failed to write to file")
+            }
+        } else {
+            print("Failed to find reference object")
+        }
+    }
+    
+    func quadToYaw(q quat: simd_quatf) -> Float {
+
+        let q = quat.normalized
+        
+        let q2sqr: Float = q.imag.y * q.imag.y;
+        let t0: Float = -2.0 * (q2sqr + q.imag.z * q.imag.z) + 1.0;
+        let t1: Float = +2.0 * (q.imag.x * q.imag.y + q.real * q.imag.z);
+        var t2: Float = -2.0 * (q.imag.x * q.imag.z - q.real * q.imag.y);
+        let t3: Float = +2.0 * (q.imag.y * q.imag.z + q.real * q.imag.x);
+        let t4: Float = -2.0 * (q.imag.x * q.imag.x + q2sqr) + 1.0;
+
+        t2 = t2 > 1.0 ? 1.0 : t2;
+        t2 = t2 < -1.0 ? -1.0 : t2;
+
+        // Yaw, Roll, Pitch
+        var yaw = asin(t2)
+        let roll = atan2(t3, t4)
+        let pitch = atan2(t1, t0)
+        
+        // Adjust to prioritize yaw (undo flips in pitch/roll)
+        if roll > Float.pi / 2 && pitch > Float.pi / 2 {
+            if yaw < 0 {
+                yaw = -Float.pi - yaw
+            } else {
+                yaw = Float.pi - yaw
+            }
+        }
+        if yaw < 0 {
+            yaw += 2 * Float.pi
+        }
+        
+        return yaw
+    }
 }

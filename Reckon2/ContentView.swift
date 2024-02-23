@@ -17,11 +17,16 @@ struct ContentView : View {
             ARViewContainer().edgesIgnoringSafeArea(.all).environmentObject(dataModel)
             HStack {
                 VStack {
+//                    Image(systemName: "square.and.arrow.up").onTapGesture {
+//                        dataModel.generateMap()
+//                    }.font(.system(size: 40)).padding(20)
                     Spacer()
                     Image(systemName: "plus.app").onTapGesture {
                         dataModel.selectionMenuOpen.toggle()
                     }.font(.system(size: 40)).padding(20)
-                        .sheet(isPresented: $dataModel.selectionMenuOpen, content: {
+                        .sheet(isPresented: $dataModel.selectionMenuOpen, onDismiss: {
+                            dataModel.generatedMapURL = nil
+                        }, content: {
                             VStack {
                                 ForEach(dataModel.models) { compElem in
                                     VStack {
@@ -30,6 +35,17 @@ struct ContentView : View {
                                                 dataModel.showModel(id: compElem.id)
                                             }
                                             Spacer()
+                                            
+                                            if let ref = dataModel.referenceID, ref == compElem.id {
+                                                Image(systemName: "star.fill")
+                                                    .font(.system(size: 20))
+                                            } else {
+                                                Image(systemName: "star")
+                                                    .onTapGesture {
+                                                        dataModel.referenceID = compElem.id
+                                                    }
+                                                    .font(.system(size: 20))
+                                            }
                                             Image(systemName: "trash.fill")
                                                 .onTapGesture {
                                                     dataModel.deleteElement(id: compElem.id)
@@ -40,12 +56,22 @@ struct ContentView : View {
                                     }
                                 }
                                 Spacer()
-                                Image(systemName: "square.and.arrow.up")
+                                if dataModel.generatedMapURL != nil {
+                                    ShareLink(item: dataModel.generatedMapURL!) {
+                                        Label("Press to Share", image: "square.and.arrow.up")
+                                    }
+                                } else {
+                                    Text("Generate Map").onTapGesture {
+                                        dataModel.generateMap()
+                                        // TODO: Error handling (.alert if .generatedMapURL not set)
+                                    }
+                                }
+                                Image(systemName: "plus.circle")
                                     .onTapGesture {
                                         dataModel.selectionMenuOpen = false
                                         dataModel.isImporting.toggle()
                                     }
-                                    .font(.system(size: 20))
+                                    .font(.system(size: 30))
                                     .padding(.top, 20)
                             }
                             .padding(20)
